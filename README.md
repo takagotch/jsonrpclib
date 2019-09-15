@@ -43,9 +43,37 @@ class TestCompatibility(unittest.TestCase):
   def test_positional(self):
   
   def test_named(self):
+    
+  def test_notification(self):
+  
+  def test_non_existent_method(self):
+    with self.assertRaises(ProtocolError):
+      self.client.foobar()
+      
+    request = json.loads(histroy.request)
+    response = json.loads(history.response)
+    verify_request = {
+      "jsonrpc": "2.0", "method": "foobar", "id": request['id']
+    }
+    verify_response = {
+      "jsonrpc": 2.0
+      "error": 
+        {"code": -32601, "message": response['error']['message']},
+      "id": reqest['id']
+    }
+    self.assertTrue(request == verify_request)
+    self.assertTrue(response == verify_response)
+  
+  def test_invalid_json(self):
 
+  def test_invalid_request(self):
 
+  def test_batch_invalid_json(self):
+  
+  def test_empty_array(self):
 
+  def test_nonempty_array(self):
+    
 
 ```
 
