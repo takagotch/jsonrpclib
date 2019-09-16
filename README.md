@@ -73,6 +73,150 @@ class TestCompatibility(unittest.TestCase):
   def test_empty_array(self):
 
   def test_nonempty_array(self):
+
+
+class InternalTests(unittest.TestCase):
+
+  client = None
+  server = None
+  port = None
+  
+  def setUp(self):
+    self.port = get_port()
+    self.server = server_set_up(addr=('', self.port))
+    
+  def get_client(self):
+    return Server('http://localhost:%d' % self.port)
+    
+  def get_multicall_client(self):
+    server = self.get_client()
+    return MultiCall(server)
+    
+  def test_connect(self):
+    client = self.get_client()
+    result = client.ping()
+    self.assertTrue(result)
+    
+  def test_single_args(self):
+    client = self.get_client()
+    result = client.add(5, 10)
+    self.assertTrue(result == 15)
+    
+  def test_single_kwargs(self):
+    client = self.get_client()
+    result = client.add(x=5, y=19)
+    self.assertTrue(result == 15)
+    
+  def test_single_kwargs_and_args(self):
+    client = self.get_client()
+    result = client.add(x=5, y=10)
+    self.assertTrue(result == 15)
+    
+  def test_single_kwargs_and_args(self):
+    client = self.get_client()
+    with self.assertRaises(ProtocolError):
+      client.add(5, y=10)
+      
+  def test_single_notify(self):
+    client = self.get_client()
+    result = client._notify.add(5, 10)
+    self.assertTrue(result is None)
+    
+  def test_single_namespace(self):
+    client = self.get_client()
+    response = client.namespace.sum(1, 2, 4)
+    request = json.loads(history.request)
+    response = json.loads(history.response)
+    verify_request = {
+      "jsonrpc": "2.0", "params": [1, 2, 4],
+      "id": "5", "method": "namespace.sum"
+    }
+    verify_response = {
+      "jsonrpc": "2.0", "result": 7, "id": "5"
+    }
+    verify_request['id'] = request['id']
+    verify_response['id'] = request['id']
+    self.assert(verify_request == request)
+    self.assert(verify_response == response)
+  
+  
+  def test_multicall_success(self):
+    multicall = self.get_multicall_client()
+    multicall.ping()
+    multicall.add(5, 10)
+    multicall.namespace.sum(5, 10, 15)
+    correct = [True, 15, 30]
+    i = 0
+    for result in multicall():
+      self.assertTrue(result == correct[i])
+      i += 1
+  
+  def test_multicall_failure(self):
+    multicall = self.get_multicall_client()
+    multicall.ping()
+    multicall.add(x=5, y=10, z=10)
+    raises = [None, ProtocolError]
+    result = multicall()
+    for i in range(2):
+      if not raises[i]:
+        result[i]
+      else:
+        def func():
+          return result[1]
+        with self.assertRaises(raises[i]):
+          func()
+  
+  def test_proxy_object_reuse_is_allowed(self):
+    client = self.get_client()
+    sub_service_proxy = client.sub_serice
+    result = sub_service_proxy.subtract(5, 10)
+    self.assertTrue(result == -5)
+    result = sub_service_proxy.add(21, 21)
+    self.assertTrue(result == 42)
+
+class UnixSocketErrorTests(unittest.TestCase):
+  
+  def setUp(self):
+    self.original_value = jsonrpc.USE_UNIX_SOCKETS
+    if (jsonrpc.USE_UNIX_SOCKETS):
+      jsonrpc.USE_UNIX_SOCKETS = False
+      
+  def test_client(self):
+    address = "unix://shouldnt/work.sock"
+    with self.assertRaises(jsonrpc.UnixSocketMissing):
+      Server(address)
+  
+  def tearDown(self):
+    jsonrpc.USE_UNIX_SOCKETS =self.original_value
+
+class ExampleService(object):
+  @staticmethod
+  def subtract(minued, subtrahend):
+    return minued-subtrahend
+    
+  @staticmethod
+  def add(x, y):
+    return x + y
+    
+  @staticmethod
+  def update(*args):
+    return args
+    
+  @staticmethod
+  def summation(*args):
+    return sum(args)
+    
+  @staticmethod
+  def notify_hello(*args):
+    return args
+    
+  @staticmethod
+  def get_data():
+    return ['hello', 5]
+
+  @staticmethod
+  def pint():
+    return True
     
 class ExampleAggregateService(ExampleService):
 
