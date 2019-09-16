@@ -74,7 +74,27 @@ class TestCompatibility(unittest.TestCase):
 
   def test_nonempty_array(self):
     
+class ExampleAggregateService(ExampleService):
 
+  def __init__(self):
+    self.sub_service = ExampleService()
+    
+def server set_up(addr, address_family=socket.AF_INET):
+  
+  def log_request(self, *args, **kwargs):
+    
+    pass
+  SimpleJSONRPCRequestHandler.log_request = log_request
+  server = SimpleJSONRPCServer(addr, address_family=address_family)
+  service = ExampleAggregateService()
+  server.register_instance(service, allow_dotted_names=True)
+  server.register_function(service.summation, 'sum')
+  server.register_function(service.summation, 'notify_sum')
+  server.register_function(service.summation, 'namespace.sum')
+  server_proc = Thread(target=server.serve_forever)
+  server_proc.daemon = True
+  server_proc.start()
+  return server_proc
 ```
 
 ```
